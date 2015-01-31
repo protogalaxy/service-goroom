@@ -8,48 +8,39 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/arjantop/saola/httpservice"
 	"github.com/protogalaxy/service-goroom/service"
 	"golang.org/x/net/context"
 )
 
-type LobbyMock struct {
-	OnCreateRoom func(userID string) string
-	OnJoinRoom   func(roomID, userID string) error
-}
-
-func (m LobbyMock) CreateRoom(userID string) string {
-	return m.OnCreateRoom(userID)
-}
-
-func (m LobbyMock) JoinRoom(roomID, userID string) error {
-	return m.OnJoinRoom(roomID, userID)
-}
-
-func TestCreateRoomSuccess(t *testing.T) {
+func TestJoinRoomSuccess(t *testing.T) {
 	l := LobbyMock{
-		OnCreateRoom: func(userID string) string {
-			return "room1"
+		OnJoinRoom: func(roomID, userID string) error {
+			return nil
 		},
 	}
-	s := service.CreateRoom{
+	s := service.JoinRoom{
 		Lobby: l,
 	}
+
+	ps := httpservice.EmptyParams()
+	ps.Set("roomID", "room1")
+
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "", strings.NewReader(`{"user_id": "user123"}`))
-	err := s.DoHTTP(context.Background(), w, req)
+	ctx := httpservice.WithParams(context.Background(), ps)
+	err := s.DoHTTP(ctx, w, req)
 	if err != nil {
-		t.Fatalf("Creating a room should no fail but got: %s", err)
+		t.Fatalf("Joining a room should no fail but got: %s", err)
 	}
-	if w.Code != http.StatusCreated {
-		t.Errorf("Should respond with status 'Created' but got: %d", w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("Should respond with status 'OK' but got: %d", w.Code)
 	}
 	if w.Header().Get("Content-Type") != "application/json; charset=utf-8" {
 		t.Errorf("Unexpected content type: %s", w.Header().Get("Content-Type"))
 	}
 	res := make(map[string]interface{})
-	expected := map[string]interface{}{
-		"room_id": "room1",
-	}
+	expected := map[string]interface{}{}
 	dec := json.NewDecoder(w.Body)
 	if err := dec.Decode(&res); err != nil || !reflect.DeepEqual(res, expected) {
 		t.Errorf("Invalid response body: expected '%v' but got '%v'", expected, res)
@@ -59,24 +50,26 @@ func TestCreateRoomSuccess(t *testing.T) {
 	}
 }
 
-func TestCreateRoomDecodeBodyError(t *testing.T) {
-	s := service.CreateRoom{
+func TestJoinRoomMissingUserID(t *testing.T) {
+	s := service.JoinRoom{
 		Lobby: LobbyMock{},
 	}
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "", strings.NewReader(`{`))
+	req, _ := http.NewRequest("POST", "", strings.NewReader(`{}`))
 	err := s.DoHTTP(context.Background(), w, req)
 	if err == nil {
 		t.Fatal("Expecting error but got none")
 	}
 }
 
-func TestCreateRoomMissingRoomId(t *testing.T) {
-	s := service.CreateRoom{
+func TestJoinRoomBadRequestBody(t *testing.T) {
+	s := service.JoinRoom{
 		Lobby: LobbyMock{},
 	}
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "", strings.NewReader(`{}`))
+	req, _ := http.NewRequest("POST", "", strings.NewReader(`{`))
 	err := s.DoHTTP(context.Background(), w, req)
 	if err == nil {
 		t.Fatal("Expecting error but got none")

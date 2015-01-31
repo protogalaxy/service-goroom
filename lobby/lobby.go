@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"errors"
 	"sync"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -11,8 +12,13 @@ type Room struct {
 	Owner string
 }
 
+func (r *Room) Join(userID string) error {
+	return nil
+}
+
 type Lobby interface {
 	CreateRoom(userID string) string
+	JoinRoom(roomID, userID string) error
 }
 
 type Manager struct {
@@ -36,4 +42,21 @@ func (l *Manager) CreateRoom(userID string) string {
 	l.rooms[id.String()] = r
 	l.lock.Unlock()
 	return r.ID.String()
+}
+
+var (
+	ErrRoomDoesNotExist = errors.New("Room does not exist")
+)
+
+func (l *Manager) JoinRoom(roomID, userID string) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	room, ok := l.rooms[roomID]
+	if !ok {
+		return ErrRoomDoesNotExist
+	}
+	if err := room.Join(userID); err != nil {
+		return err
+	}
+	return nil
 }

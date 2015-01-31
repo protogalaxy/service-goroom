@@ -27,6 +27,14 @@ import (
 	"github.com/protogalaxy/service-goroom/service"
 )
 
+func Filters() []saola.Filter {
+	return []saola.Filter{
+		httpservice.NewCancellationFilter(),
+		serviceerror.NewErrorResponseFilter(),
+		serviceerror.NewErrorLoggerFilter(),
+	}
+}
+
 func main() {
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
@@ -36,9 +44,13 @@ func main() {
 		&service.CreateRoom{
 			Lobby: lobby.NewLobby(),
 		},
-		httpservice.NewCancellationFilter(),
-		serviceerror.NewErrorResponseFilter(),
-		serviceerror.NewErrorLoggerFilter()))
+		Filters()...))
+
+	endpoint.POST("/room/:roomID/join", saola.Apply(
+		&service.CreateRoom{
+			Lobby: lobby.NewLobby(),
+		},
+		Filters()...))
 
 	log.Fatal(httpservice.Serve(":10200", saola.Apply(
 		endpoint,
