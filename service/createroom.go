@@ -6,39 +6,32 @@ import (
 
 	"github.com/arjantop/saola/httpservice"
 	"github.com/protogalaxy/common/serviceerror"
-	"github.com/protogalaxy/service-goroom/lobby"
 	"golang.org/x/net/context"
 )
 
-type CreateRoomRequest struct {
-	UserID string `json:"user_id"`
-}
-
-type CreateRoomResponse struct {
-	RoomID string `json:"room_id"`
-}
-
 type CreateRoom struct {
-	Lobby lobby.Lobby
+	Service *GoRoom
 }
 
 // DoHTTP implements saola.HttpService.
 func (h *CreateRoom) DoHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	var cr CreateRoomRequest
+	var req CreateRoomRequest
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&cr)
+	err := decoder.Decode(&req)
 	if err != nil {
 		serr := serviceerror.BadRequest("invalid_request", "Unable to decode request body")
 		serr.Cause = err
 		return serr
 	}
 
-	if cr.UserID == "" {
+	if req.UserID == "" {
 		return serviceerror.BadRequest("invalid_request", "Missing user id")
 	}
 
-	res := CreateRoomResponse{
-		RoomID: h.Lobby.CreateRoom(cr.UserID),
+	var res CreateRoomResponse
+	err = h.Service.CreateRoom(&req, &res)
+	if err != nil {
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -6,23 +6,12 @@ import (
 	"net/http"
 
 	"github.com/arjantop/saola/httpservice"
-	"github.com/golang/glog"
 	"github.com/protogalaxy/common/serviceerror"
-	"github.com/protogalaxy/service-goroom/lobby"
 	"golang.org/x/net/context"
 )
 
-type JoinRoomRequest struct {
-	UserID string `json:"user_id"`
-	RoomID string `json:"-"`
-}
-
-type JoinRoomResponse struct {
-	Status string `json:"status"`
-}
-
 type JoinRoom struct {
-	Lobby lobby.Lobby
+	Service *GoRoom
 }
 
 func decodeRequest(body io.Reader, r *JoinRoomRequest) error {
@@ -49,19 +38,10 @@ func (h *JoinRoom) DoHTTP(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	err = h.Lobby.JoinRoom(req.RoomID, req.UserID)
-	res := JoinRoomResponse{
-		Status: "joined",
-	}
-
-	if err == lobby.ErrRoomNotFound {
-		res.Status = "room_not_found"
-	} else if err == lobby.ErrAlreadyInRoom {
-		res.Status = "already_in_room"
-	} else if err == lobby.ErrRoomFull {
-		res.Status = "room_full"
-	} else if err != nil {
-		glog.Errorf("Unexpected error: %s", err)
+	var res JoinRoomResponse
+	err = h.Service.JoinRoom(&req, &res)
+	if err != nil {
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -20,7 +20,9 @@ func TestJoinRoomSuccess(t *testing.T) {
 		},
 	}
 	s := service.JoinRoom{
-		Lobby: l,
+		Service: &service.GoRoom{
+			Lobby: l,
+		},
 	}
 
 	ps := httpservice.EmptyParams()
@@ -54,7 +56,9 @@ func TestJoinRoomSuccess(t *testing.T) {
 
 func TestJoinRoomMissingUserID(t *testing.T) {
 	s := service.JoinRoom{
-		Lobby: LobbyMock{},
+		Service: &service.GoRoom{
+			Lobby: LobbyMock{},
+		},
 	}
 
 	w := httptest.NewRecorder()
@@ -67,7 +71,9 @@ func TestJoinRoomMissingUserID(t *testing.T) {
 
 func TestJoinRoomBadRequestBody(t *testing.T) {
 	s := service.JoinRoom{
-		Lobby: LobbyMock{},
+		Service: &service.GoRoom{
+			Lobby: LobbyMock{},
+		},
 	}
 
 	w := httptest.NewRecorder()

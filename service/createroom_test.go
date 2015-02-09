@@ -32,7 +32,9 @@ func TestCreateRoomSuccess(t *testing.T) {
 		},
 	}
 	s := service.CreateRoom{
-		Lobby: l,
+		Service: &service.GoRoom{
+			Lobby: l,
+		},
 	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "", strings.NewReader(`{"user_id": "user123"}`))
@@ -61,7 +63,9 @@ func TestCreateRoomSuccess(t *testing.T) {
 
 func TestCreateRoomDecodeBodyError(t *testing.T) {
 	s := service.CreateRoom{
-		Lobby: LobbyMock{},
+		Service: &service.GoRoom{
+			Lobby: LobbyMock{},
+		},
 	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "", strings.NewReader(`{`))
@@ -73,7 +77,9 @@ func TestCreateRoomDecodeBodyError(t *testing.T) {
 
 func TestCreateRoomMissingRoomId(t *testing.T) {
 	s := service.CreateRoom{
-		Lobby: LobbyMock{},
+		Service: &service.GoRoom{
+			Lobby: LobbyMock{},
+		},
 	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "", strings.NewReader(`{}`))

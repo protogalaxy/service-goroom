@@ -40,17 +40,20 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	lobby := lobby.NewLobby()
+	goroom := &service.GoRoom{
+		Lobby: lobby,
+	}
 
 	endpoint := httpservice.NewEndpoint()
 	endpoint.POST("/rooms", saola.Apply(
 		&service.CreateRoom{
-			Lobby: lobby,
+			Service: goroom,
 		},
 		Filters()...))
 
 	endpoint.POST("/rooms/:roomID/join", saola.Apply(
 		&service.JoinRoom{
-			Lobby: lobby,
+			Service: goroom,
 		},
 		Filters()...))
 
