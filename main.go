@@ -39,16 +39,18 @@ func main() {
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 
+	lobby := lobby.NewLobby()
+
 	endpoint := httpservice.NewEndpoint()
-	endpoint.POST("/room", saola.Apply(
+	endpoint.POST("/rooms", saola.Apply(
 		&service.CreateRoom{
-			Lobby: lobby.NewLobby(),
+			Lobby: lobby,
 		},
 		Filters()...))
 
-	endpoint.POST("/room/:roomID/join", saola.Apply(
-		&service.CreateRoom{
-			Lobby: lobby.NewLobby(),
+	endpoint.POST("/rooms/:roomID/join", saola.Apply(
+		&service.JoinRoom{
+			Lobby: lobby,
 		},
 		Filters()...))
 

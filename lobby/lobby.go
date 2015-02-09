@@ -8,11 +8,18 @@ import (
 )
 
 type Room struct {
-	ID    uuid.UUID
-	Owner string
+	ID          uuid.UUID
+	Owner       string
+	OtherPlayer string
 }
 
+var ErrRoomFull = errors.New("room full")
+
 func (r *Room) Join(userID string) error {
+	if r.OtherPlayer != "" {
+		return ErrRoomFull
+	}
+	r.OtherPlayer = userID
 	return nil
 }
 
@@ -45,18 +52,31 @@ func (l *Manager) CreateRoom(userID string) string {
 }
 
 var (
-	ErrRoomDoesNotExist = errors.New("Room does not exist")
+	ErrRoomNotFound  = errors.New("room not found")
+	ErrAlreadyInRoom = errors.New("already in room")
 )
 
 func (l *Manager) JoinRoom(roomID, userID string) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
+
 	room, ok := l.rooms[roomID]
 	if !ok {
-		return ErrRoomDoesNotExist
+		return ErrRoomNotFound
 	}
+
+	for _, room := range l.rooms {
+		if userInRoom(room, userID) {
+			return ErrAlreadyInRoom
+		}
+	}
+
 	if err := room.Join(userID); err != nil {
 		return err
 	}
 	return nil
+}
+
+func userInRoom(r *Room, userID string) bool {
+	return r.Owner == userID || r.OtherPlayer == userID
 }

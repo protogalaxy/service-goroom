@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/arjantop/saola/httpservice"
+	"github.com/golang/glog"
 	"github.com/protogalaxy/common/serviceerror"
 	"github.com/protogalaxy/service-goroom/lobby"
 	"golang.org/x/net/context"
@@ -16,7 +17,9 @@ type JoinRoomRequest struct {
 	RoomID string `json:"-"`
 }
 
-type JoinRoomResponse struct{}
+type JoinRoomResponse struct {
+	Status string `json:"status"`
+}
 
 type JoinRoom struct {
 	Lobby lobby.Lobby
@@ -26,11 +29,13 @@ func decodeRequest(body io.Reader, r *JoinRoomRequest) error {
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&r)
 	if err != nil {
-		return serviceerror.BadRequest("Unable to decode request body", err)
+		serr := serviceerror.BadRequest("invalid_request", "Unable to decode request body")
+		serr.Cause = err
+		return serr
 	}
 
 	if r.UserID == "" {
-		return serviceerror.BadRequest("Missing or empty user id", nil)
+		return serviceerror.BadRequest("invalid_request", "Missing or empty user id")
 	}
 	return nil
 }
@@ -44,17 +49,27 @@ func (h *JoinRoom) DoHTTP(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	// TODO: handle error
-	h.Lobby.JoinRoom(req.RoomID, req.UserID)
+	err = h.Lobby.JoinRoom(req.RoomID, req.UserID)
+	res := JoinRoomResponse{
+		Status: "joined",
+	}
 
-	res := JoinRoomResponse{}
+	if err == lobby.ErrRoomNotFound {
+		res.Status = "room_not_found"
+	} else if err == lobby.ErrAlreadyInRoom {
+		res.Status = "already_in_room"
+	} else if err == lobby.ErrRoomFull {
+		res.Status = "room_full"
+	} else if err != nil {
+		glog.Errorf("Unexpected error: %s", err)
+	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&res)
 	if err != nil {
-		return serviceerror.InternalServerError("Problem encoding response", err)
+		return serviceerror.InternalServerError("server_error", "Problem encoding response", err)
 	}
 	return nil
 }
@@ -65,5 +80,5 @@ func (h *JoinRoom) Do(ctx context.Context) error {
 }
 
 func (h *JoinRoom) Name() string {
-	return "createroom"
+	return "joinroom"
 }

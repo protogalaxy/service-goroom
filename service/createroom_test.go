@@ -43,7 +43,7 @@ func TestCreateRoomSuccess(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Errorf("Should respond with status 'Created' but got: %d", w.Code)
 	}
-	if w.Header().Get("Content-Type") != "application/json; charset=utf-8" {
+	if w.Header().Get("Content-Type") != "application/json" {
 		t.Errorf("Unexpected content type: %s", w.Header().Get("Content-Type"))
 	}
 	res := make(map[string]interface{})

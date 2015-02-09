@@ -36,11 +36,13 @@ func TestJoinRoomSuccess(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("Should respond with status 'OK' but got: %d", w.Code)
 	}
-	if w.Header().Get("Content-Type") != "application/json; charset=utf-8" {
+	if w.Header().Get("Content-Type") != "application/json" {
 		t.Errorf("Unexpected content type: %s", w.Header().Get("Content-Type"))
 	}
 	res := make(map[string]interface{})
-	expected := map[string]interface{}{}
+	expected := map[string]interface{}{
+		"status": "joined",
+	}
 	dec := json.NewDecoder(w.Body)
 	if err := dec.Decode(&res); err != nil || !reflect.DeepEqual(res, expected) {
 		t.Errorf("Invalid response body: expected '%v' but got '%v'", expected, res)

@@ -15,22 +15,12 @@ func NewErrorResponseFilter() saola.Filter {
 		err := s.Do(ctx)
 		if err != nil {
 			req := httpservice.GetServerRequest(ctx)
-			req.Writer.Header().Set("Content-Type", "application/json")
+			req.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 			if er, ok := err.(ErrorResponse); ok {
 				req.Writer.WriteHeader(er.StatusCode)
 				encoder := json.NewEncoder(req.Writer)
-				result := struct {
-					Message string `json:"message"`
-					Err     string `json:"error,omitempty"`
-				}{
-					er.Message,
-					"",
-				}
-				if er.Err != nil {
-					result.Err = er.Err.Error()
-				}
-				encodeError := encoder.Encode(&result)
+				encodeError := encoder.Encode(&er)
 				if encodeError != nil {
 					glog.Warning("error encoding the error response: %s", encodeError)
 				}
@@ -46,15 +36,7 @@ func NewErrorLoggerFilter() saola.Filter {
 	return saola.FuncFilter(func(ctx context.Context, s saola.Service) error {
 		err := s.Do(ctx)
 		if err != nil {
-			if er, ok := err.(ErrorResponse); ok {
-				if er.Err != nil {
-					glog.Errorf("Service error: %s error=%s", er.Message, er.Err)
-				} else {
-					glog.Errorf("Service error: %s", er.Message)
-				}
-			} else {
-				glog.Errorf("Generic service error error=%s", err)
-			}
+			glog.Errorf("Service error: %s", err)
 		}
 		return err
 	})

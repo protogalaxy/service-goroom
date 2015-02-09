@@ -24,7 +24,7 @@
 		},
 		{
 			"ImportPath": "github.com/protogalaxy/common/serviceerror",
-			"Rev": "f4023639b79ede0071f62802a46c6c6845521c17"
+			"Rev": "466cdb29e9f1f02750a45afa2ba829b20cff0912"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",

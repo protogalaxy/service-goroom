@@ -9,45 +9,51 @@ import (
 )
 
 type ErrorResponse struct {
-	StatusCode int    `json:"-"`
-	Message    string `json:"message"`
-	Err        error  `json:"error,omitempty"`
+	StatusCode int    `json:"status"`
+	ErrorCode  string `json:"error"`
+	Message    string `json:"message,omitempty"`
+	Cause      error  `json:"-"`
 }
 
 func (e ErrorResponse) Error() string {
-	return fmt.Sprintf("[%d] %s: %s", e.StatusCode, e.Message, e.Err)
+	err := e.ErrorCode
+	if e.Message != "" {
+		err += ": " + e.Message
+	}
+	if e.Cause != nil {
+		err += ": " + e.Cause.Error()
+	}
+	return err
 }
 
-func InternalServerError(msg string, err error) ErrorResponse {
+func InternalServerError(code, msg string, err error) ErrorResponse {
 	return ErrorResponse{
 		StatusCode: http.StatusInternalServerError,
+		ErrorCode:  code,
 		Message:    msg,
-		Err:        err,
+		Cause:      err,
 	}
 }
 
-func BadRequest(msg string, err error) ErrorResponse {
+func BadRequest(code, msg string) ErrorResponse {
 	return ErrorResponse{
 		StatusCode: http.StatusBadRequest,
+		ErrorCode:  code,
 		Message:    msg,
-		Err:        err,
 	}
 }
 
 func Decode(body io.Reader) error {
-	var errorResponse struct {
-		Message string `json:"message"`
-		Err     string `json:"error"`
-	}
+	var response ErrorResponse
 	decoder := json.NewDecoder(body)
-	if err := decoder.Decode(&errorResponse); err != nil {
-		return fmt.Errorf("Error decoding unexpected response: %s", err)
+	if err := decoder.Decode(&response); err != nil {
+		return fmt.Errorf("Error decoding ErrorResponse: %s", err)
 	}
-	if errorResponse.Message == "" {
-		return errors.New("Missing messages field")
+	if response.StatusCode == 0 {
+		return errors.New("Missing field status")
 	}
-	return ErrorResponse{
-		Message: errorResponse.Message,
-		Err:     errors.New(errorResponse.Err),
+	if response.ErrorCode == "" {
+		return errors.New("Missing field error")
 	}
+	return response
 }
