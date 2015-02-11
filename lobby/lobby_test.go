@@ -94,14 +94,12 @@ func TestLobbyCanRetrieveCreatedRoomInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	if rinfo.ID != "roomid" {
-		t.Errorf("Invalid room id: %s", rinfo.ID)
+	expected := lobby.Room{
+		ID:    "roomid",
+		Owner: "userid",
 	}
-	if rinfo.Owner != "userid" {
-		t.Errorf("Invalid owner id: %s", rinfo.Owner)
-	}
-	if rinfo.OtherPlayer != "" {
-		t.Errorf("There should be no other player joined but got: %s", rinfo.OtherPlayer)
+	if *rinfo != expected {
+		t.Errorf("Invalid response: %#v != %#v", rinfo, expected)
 	}
 }
 
@@ -132,14 +130,13 @@ func TestLobbyCreatedRoomCanBeJoined(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %#v", err)
 	}
-	if rinfo.ID != "roomid" {
-		t.Errorf("Invalid room id: %s", rinfo.ID)
+	expected := lobby.Room{
+		ID:          "roomid",
+		Owner:       "userid",
+		OtherPlayer: "user2",
 	}
-	if rinfo.Owner != "userid" {
-		t.Errorf("Invalid owner id: %s", rinfo.Owner)
-	}
-	if rinfo.OtherPlayer != "user2" {
-		t.Errorf("Invalid other player", rinfo.OtherPlayer)
+	if *rinfo != expected {
+		t.Errorf("Invalid response: %#v != %#v", rinfo, expected)
 	}
 }
 
