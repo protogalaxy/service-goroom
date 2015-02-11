@@ -39,6 +39,7 @@ type CreateRoomRequest struct {
 }
 
 type CreateRoomResponse struct {
+	Status string `json:"status"`
 	RoomID string `json:"room_id"`
 }
 
@@ -47,7 +48,16 @@ func (s *GoRoom) CreateRoom(req *CreateRoomRequest, res *CreateRoomResponse) err
 		return NewMissingParameterError("user id")
 	}
 
-	res.RoomID = s.Lobby.CreateRoom(req.UserID)
+	rid, err := s.Lobby.CreateRoom(req.UserID)
+	if err == lobby.ErrAlreadyInRoom {
+		res.Status = "already_in_room"
+		return nil
+	} else if err != nil {
+		glog.Errorf("Unexpected error: %s", err)
+		return err
+	}
+	res.Status = "created"
+	res.RoomID = rid
 	return nil
 }
 

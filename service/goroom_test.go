@@ -24,13 +24,14 @@ import (
 )
 
 type LobbyMock struct {
-	OnCreateRoom func(userID string) string
+	OnCreateRoom func(userID string) (string, error)
 	OnJoinRoom   func(roomID, userID string) error
 }
 
-func (m LobbyMock) CreateRoom(userID string) string {
+func (m LobbyMock) CreateRoom(userID string) (string, error) {
 	return m.OnCreateRoom(userID)
 }
+
 func (m LobbyMock) JoinRoom(roomID, userID string) error {
 	return m.OnJoinRoom(roomID, userID)
 }
@@ -38,11 +39,11 @@ func (m LobbyMock) JoinRoom(roomID, userID string) error {
 func TestGoRoomIsCreated(t *testing.T) {
 	s := &service.GoRoom{
 		Lobby: &LobbyMock{
-			OnCreateRoom: func(userID string) string {
+			OnCreateRoom: func(userID string) (string, error) {
 				if userID != "userid" {
 					t.Errorf("Unexpected user id: %s", userID)
 				}
-				return "roomid"
+				return "roomid", nil
 			},
 		},
 	}
@@ -54,8 +55,36 @@ func TestGoRoomIsCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	if res.RoomID != "roomid" {
-		t.Errorf("Invalid room id: %s", res.RoomID)
+	expected := service.CreateRoomResponse{
+		Status: "created",
+		RoomID: "roomid",
+	}
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
+	}
+}
+
+func TestGoRoomUserCreatingTheRoomAlreadyInAnotherRoom(t *testing.T) {
+	s := &service.GoRoom{
+		Lobby: &LobbyMock{
+			OnCreateRoom: func(userID string) (string, error) {
+				return "", lobby.ErrAlreadyInRoom
+			},
+		},
+	}
+	req := service.CreateRoomRequest{
+		UserID: "userid",
+	}
+	var res service.CreateRoomResponse
+	err := s.CreateRoom(&req, &res)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	expected := service.CreateRoomResponse{
+		Status: "already_in_room",
+	}
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
 	}
 }
 
@@ -76,7 +105,7 @@ func TestGoRoomCreateErrorReturnedIfUserIDMissing(t *testing.T) {
 	AssertMissingParameterError(t, s.CreateRoom(&req, &res), "user id")
 }
 
-func TestGoRoomUserCanJoinTheRoom(t *testing.T) {
+func TestGoRoomIsJoined(t *testing.T) {
 	s := &service.GoRoom{
 		Lobby: &LobbyMock{
 			OnJoinRoom: func(roomID, userID string) error {
@@ -99,36 +128,11 @@ func TestGoRoomUserCanJoinTheRoom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	if res.Status != "joined" {
-		t.Errorf("Unexpected room join status: %s", res.Status)
+	expected := service.JoinRoomResponse{
+		Status: "joined",
 	}
-}
-
-func TestGoRoomUserCanJoin(t *testing.T) {
-	s := &service.GoRoom{
-		Lobby: &LobbyMock{
-			OnJoinRoom: func(roomID, userID string) error {
-				if roomID != "roomid" {
-					t.Errorf("Unexpected room id: %s", userID)
-				}
-				if userID != "userid" {
-					t.Errorf("Unexpected user id: %s", userID)
-				}
-				return nil
-			},
-		},
-	}
-	req := service.JoinRoomRequest{
-		RoomID: "roomid",
-		UserID: "userid",
-	}
-	var res service.JoinRoomResponse
-	err := s.JoinRoom(&req, &res)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	if res.Status != "joined" {
-		t.Errorf("Unexpected room join status: %s", res.Status)
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
 	}
 }
 
@@ -167,8 +171,11 @@ func TestGoRoomUserCannotJoinTheNonexistentRoom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	if res.Status != "room_not_found" {
-		t.Errorf("Unexpected room join status: %s", res.Status)
+	expected := service.JoinRoomResponse{
+		Status: "room_not_found",
+	}
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
 	}
 }
 
@@ -189,8 +196,11 @@ func TestGoRoomUserCannotJoinTwoRoomsAtOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	if res.Status != "already_in_room" {
-		t.Errorf("Unexpected room join status: %s", res.Status)
+	expected := service.JoinRoomResponse{
+		Status: "already_in_room",
+	}
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
 	}
 }
 
@@ -211,7 +221,10 @@ func TestGoRoomUserCannotJoinTheFullRoom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	if res.Status != "room_full" {
-		t.Errorf("Unexpected room join status: %s", res.Status)
+	expected := service.JoinRoomResponse{
+		Status: "room_full",
+	}
+	if res != expected {
+		t.Errorf("Invalid response: %#v != %#v", res, expected)
 	}
 }

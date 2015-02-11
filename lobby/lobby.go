@@ -23,12 +23,16 @@ import (
 )
 
 type Room struct {
-	ID          uuid.UUID
+	ID          string
 	Owner       string
 	OtherPlayer string
 }
 
-var ErrRoomFull = errors.New("room full")
+var (
+	ErrRoomFull      = errors.New("room full")
+	ErrRoomNotFound  = errors.New("room not found")
+	ErrAlreadyInRoom = errors.New("already in room")
+)
 
 func (r *Room) Join(userID string) error {
 	if r.OtherPlayer != "" {
@@ -39,37 +43,66 @@ func (r *Room) Join(userID string) error {
 }
 
 type Lobby interface {
-	CreateRoom(userID string) string
+	CreateRoom(userID string) (string, error)
 	JoinRoom(roomID, userID string) error
+}
+
+type Generator interface {
+	GenerateID() string
+}
+
+type UUIDGenerator struct{}
+
+func (g *UUIDGenerator) GenerateID() string {
+	return uuid.NewRandom().String()
 }
 
 type Manager struct {
 	lock  sync.Mutex
 	rooms map[string]*Room
+
+	Generator Generator
 }
 
 func NewLobby() *Manager {
 	return &Manager{
-		rooms: make(map[string]*Room),
+		rooms:     make(map[string]*Room),
+		Generator: &UUIDGenerator{},
 	}
 }
 
-func (l *Manager) CreateRoom(userID string) string {
-	id := uuid.NewRandom()
+func (l *Manager) CreateRoom(userID string) (string, error) {
+	for _, room := range l.rooms {
+		if userInRoom(room, userID) {
+			return "", ErrAlreadyInRoom
+		}
+	}
+
 	r := &Room{
-		ID:    id,
+		ID:    l.Generator.GenerateID(),
 		Owner: userID,
 	}
 	l.lock.Lock()
-	l.rooms[id.String()] = r
+	l.rooms[r.ID] = r
 	l.lock.Unlock()
-	return r.ID.String()
+	return r.ID, nil
 }
 
-var (
-	ErrRoomNotFound  = errors.New("room not found")
-	ErrAlreadyInRoom = errors.New("already in room")
-)
+func (l *Manager) RoomInfo(roomID string) (*Room, error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	room, ok := l.rooms[roomID]
+	if !ok {
+		return nil, ErrRoomNotFound
+	}
+
+	return &Room{
+		ID:          room.ID,
+		Owner:       room.Owner,
+		OtherPlayer: room.OtherPlayer,
+	}, nil
+}
 
 func (l *Manager) JoinRoom(roomID, userID string) error {
 	l.lock.Lock()
