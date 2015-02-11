@@ -72,10 +72,8 @@ func NewLobby() *Manager {
 }
 
 func (l *Manager) CreateRoom(userID string) (string, error) {
-	for _, room := range l.rooms {
-		if userInRoom(room, userID) {
-			return "", ErrAlreadyInRoom
-		}
+	if l.isUserInAnyRoom(userID) {
+		return "", ErrAlreadyInRoom
 	}
 
 	r := &Room{
@@ -113,16 +111,23 @@ func (l *Manager) JoinRoom(roomID, userID string) error {
 		return ErrRoomNotFound
 	}
 
-	for _, room := range l.rooms {
-		if userInRoom(room, userID) {
-			return ErrAlreadyInRoom
-		}
+	if l.isUserInAnyRoom(userID) {
+		return ErrAlreadyInRoom
 	}
 
 	if err := room.Join(userID); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (l *Manager) isUserInAnyRoom(userID string) bool {
+	for _, room := range l.rooms {
+		if userInRoom(room, userID) {
+			return true
+		}
+	}
+	return false
 }
 
 func userInRoom(r *Room, userID string) bool {

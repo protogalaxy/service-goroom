@@ -30,6 +30,14 @@ func (e MissingParameterError) Error() string {
 	return "Missing parameter: " + string(e)
 }
 
+const (
+	RoomStatusCreated       = "created"
+	RoomStatusAlreadyInRoom = "already_in_room"
+	RoomStatusFull          = "room_full"
+	RoomStatusNotFound      = "room_not_found"
+	RoomStatusJoined        = "joined"
+)
+
 type GoRoom struct {
 	Lobby lobby.Lobby
 }
@@ -50,13 +58,13 @@ func (s *GoRoom) CreateRoom(req *CreateRoomRequest, res *CreateRoomResponse) err
 
 	rid, err := s.Lobby.CreateRoom(req.UserID)
 	if err == lobby.ErrAlreadyInRoom {
-		res.Status = "already_in_room"
+		res.Status = RoomStatusAlreadyInRoom
 		return nil
 	} else if err != nil {
 		glog.Errorf("Unexpected error: %s", err)
 		return err
 	}
-	res.Status = "created"
+	res.Status = RoomStatusCreated
 	res.RoomID = rid
 	return nil
 }
@@ -80,16 +88,16 @@ func (s *GoRoom) JoinRoom(req *JoinRoomRequest, res *JoinRoomResponse) error {
 	err := s.Lobby.JoinRoom(req.RoomID, req.UserID)
 
 	if err == lobby.ErrRoomNotFound {
-		res.Status = "room_not_found"
+		res.Status = RoomStatusNotFound
 	} else if err == lobby.ErrAlreadyInRoom {
-		res.Status = "already_in_room"
+		res.Status = RoomStatusAlreadyInRoom
 	} else if err == lobby.ErrRoomFull {
-		res.Status = "room_full"
+		res.Status = RoomStatusFull
 	} else if err != nil {
 		glog.Errorf("Unexpected error: %s", err)
 		return err
 	} else {
-		res.Status = "joined"
+		res.Status = RoomStatusJoined
 	}
 	return nil
 }
