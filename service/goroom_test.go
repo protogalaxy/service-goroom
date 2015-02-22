@@ -16,6 +16,7 @@
 package service_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -24,8 +25,13 @@ import (
 )
 
 type LobbyMock struct {
+	OnRoomInfo   func(roomID string) (*lobby.Room, error)
 	OnCreateRoom func(userID string) (string, error)
 	OnJoinRoom   func(roomID, userID string) error
+}
+
+func (m LobbyMock) RoomInfo(roomID string) (*lobby.Room, error) {
+	return m.OnRoomInfo(roomID)
 }
 
 func (m LobbyMock) CreateRoom(userID string) (string, error) {
@@ -172,7 +178,7 @@ func TestGoRoomUserCannotJoinTheNonexistentRoom(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 	expected := service.JoinRoomResponse{
-		Status: "room_not_found",
+		Status: "not_found",
 	}
 	if res != expected {
 		t.Errorf("Invalid response: %#v != %#v", res, expected)
@@ -226,5 +232,64 @@ func TestGoRoomUserCannotJoinTheFullRoom(t *testing.T) {
 	}
 	if res != expected {
 		t.Errorf("Invalid response: %#v != %#v", res, expected)
+	}
+}
+
+func TestGoRoomRespondsWithRoomInfoForTheRoomID(t *testing.T) {
+	s := &service.GoRoom{
+		Lobby: &LobbyMock{
+			OnRoomInfo: func(roomID string) (*lobby.Room, error) {
+				return &lobby.Room{
+					ID:          "roomid",
+					Owner:       "owner",
+					OtherPlayer: "other player",
+				}, nil
+			},
+		},
+	}
+	req := service.RoomInfoRequest{
+		RoomID: "roomid",
+	}
+	var res service.RoomInfoResponse
+	err := s.RoomInfo(&req, &res)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	expected := service.RoomInfoResponse{
+		Status: "found",
+		Room: &service.Room{
+			RoomID:      "roomid",
+			Owner:       "owner",
+			OtherPlayer: "other player",
+		},
+	}
+	if !reflect.DeepEqual(expected, res) {
+		t.Errorf("Invalid response expected: %#v but got: %#v", expected, res)
+	}
+}
+
+func TestGoRoomRespondsWithRoomNotFoundIfThereIsNoRoomWithTheWantedID(t *testing.T) {
+	s := &service.GoRoom{
+		Lobby: &LobbyMock{
+			OnRoomInfo: func(roomID string) (*lobby.Room, error) {
+				return nil, lobby.ErrRoomNotFound
+			},
+		},
+	}
+	req := service.RoomInfoRequest{
+		RoomID: "nonexistent room id",
+	}
+	var res service.RoomInfoResponse
+	err := s.RoomInfo(&req, &res)
+	if err != nil {
+		t.Fatalf("Unexpected error: %#v", err)
+	}
+
+	expected := service.RoomInfoResponse{
+		Status: "not_found",
+	}
+	if res != expected {
+		t.Errorf("Invalid response expected: %#v but got: %#v", expected, res)
 	}
 }

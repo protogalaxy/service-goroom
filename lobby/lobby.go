@@ -43,6 +43,7 @@ func (r *Room) Join(userID string) error {
 }
 
 type Lobby interface {
+	RoomInfo(roomID string) (*Room, error)
 	CreateRoom(userID string) (string, error)
 	JoinRoom(roomID, userID string) error
 }

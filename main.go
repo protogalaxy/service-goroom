@@ -58,6 +58,12 @@ func main() {
 		},
 		Filters()...))
 
+	endpoint.GET("/rooms/:roomID", saola.Apply(
+		&service.RoomInfo{
+			Service: goroom,
+		},
+		Filters()...))
+
 	log.Fatal(httpservice.Serve(":10200", saola.Apply(
 		endpoint,
 		httpservice.NewStdRequestLogFilter())))

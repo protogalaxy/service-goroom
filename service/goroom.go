@@ -34,7 +34,8 @@ const (
 	RoomStatusCreated       = "created"
 	RoomStatusAlreadyInRoom = "already_in_room"
 	RoomStatusFull          = "room_full"
-	RoomStatusNotFound      = "room_not_found"
+	RoomStatusFound         = "found"
+	RoomStatusNotFound      = "not_found"
 	RoomStatusJoined        = "joined"
 )
 
@@ -98,6 +99,39 @@ func (s *GoRoom) JoinRoom(req *JoinRoomRequest, res *JoinRoomResponse) error {
 		return err
 	} else {
 		res.Status = RoomStatusJoined
+	}
+	return nil
+}
+
+type RoomInfoRequest struct {
+	RoomID string `json:"-"`
+}
+
+type Room struct {
+	RoomID      string `json:"room_id"`
+	Owner       string `json:"owner"`
+	OtherPlayer string `json:"other_player,omitempty"`
+}
+
+type RoomInfoResponse struct {
+	Status string `json:"status"`
+	Room   *Room  `json:"room"`
+}
+
+func (s *GoRoom) RoomInfo(req *RoomInfoRequest, res *RoomInfoResponse) error {
+	room, err := s.Lobby.RoomInfo(req.RoomID)
+	if err == lobby.ErrRoomNotFound {
+		res.Status = RoomStatusNotFound
+	} else if err != nil {
+		glog.Errorf("Unexpected error: %s", err)
+		return err
+	} else {
+		res.Status = RoomStatusFound
+		res.Room = &Room{
+			RoomID:      room.ID,
+			Owner:       room.Owner,
+			OtherPlayer: room.OtherPlayer,
+		}
 	}
 	return nil
 }
