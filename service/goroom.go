@@ -58,13 +58,10 @@ func (s *GoRoom) CreateRoom(req *CreateRoomRequest, res *CreateRoomResponse) err
 	}
 
 	rid, err := s.Lobby.CreateRoom(req.UserID)
-	if err == lobby.ErrAlreadyInRoom {
-		res.Status = RoomStatusAlreadyInRoom
-		return nil
-	} else if err != nil {
-		glog.Errorf("Unexpected error: %s", err)
-		return err
+	if err != nil {
+		return errorToStatus(&res.Status, err)
 	}
+
 	res.Status = RoomStatusCreated
 	res.RoomID = rid
 	return nil
@@ -87,19 +84,11 @@ func (s *GoRoom) JoinRoom(req *JoinRoomRequest, res *JoinRoomResponse) error {
 	}
 
 	err := s.Lobby.JoinRoom(req.RoomID, req.UserID)
-
-	if err == lobby.ErrRoomNotFound {
-		res.Status = RoomStatusNotFound
-	} else if err == lobby.ErrAlreadyInRoom {
-		res.Status = RoomStatusAlreadyInRoom
-	} else if err == lobby.ErrRoomFull {
-		res.Status = RoomStatusFull
-	} else if err != nil {
-		glog.Errorf("Unexpected error: %s", err)
-		return err
-	} else {
-		res.Status = RoomStatusJoined
+	if err != nil {
+		return errorToStatus(&res.Status, err)
 	}
+
+	res.Status = RoomStatusJoined
 	return nil
 }
 
@@ -120,18 +109,30 @@ type RoomInfoResponse struct {
 
 func (s *GoRoom) RoomInfo(req *RoomInfoRequest, res *RoomInfoResponse) error {
 	room, err := s.Lobby.RoomInfo(req.RoomID)
+	if err != nil {
+		return errorToStatus(&res.Status, err)
+	}
+	res.Status = RoomStatusFound
+	res.Room = &Room{
+		RoomID:      room.ID,
+		Owner:       room.Owner,
+		OtherPlayer: room.OtherPlayer,
+	}
+	return nil
+}
+
+func errorToStatus(s *string, err error) error {
 	if err == lobby.ErrRoomNotFound {
-		res.Status = RoomStatusNotFound
+		*s = RoomStatusNotFound
+	} else if err == lobby.ErrAlreadyInRoom {
+		*s = RoomStatusAlreadyInRoom
+	} else if err == lobby.ErrRoomFull {
+		*s = RoomStatusFull
 	} else if err != nil {
 		glog.Errorf("Unexpected error: %s", err)
 		return err
 	} else {
-		res.Status = RoomStatusFound
-		res.Room = &Room{
-			RoomID:      room.ID,
-			Owner:       room.Owner,
-			OtherPlayer: room.OtherPlayer,
-		}
+		glog.Fatal("Error should not be nil")
 	}
 	return nil
 }
