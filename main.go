@@ -17,54 +17,25 @@ package main
 
 import (
 	"flag"
-	"log"
 	"math/rand"
+	"net"
 	"time"
 
-	"github.com/arjantop/saola"
-	"github.com/arjantop/saola/httpservice"
-	"github.com/protogalaxy/common/serviceerror"
-	"github.com/protogalaxy/service-goroom/lobby"
-	"github.com/protogalaxy/service-goroom/service"
+	"github.com/golang/glog"
+	"github.com/protogalaxy/service-goroom/goroom"
+	"google.golang.org/grpc"
 )
-
-func Filters() []saola.Filter {
-	return []saola.Filter{
-		httpservice.NewCancellationFilter(),
-		serviceerror.NewErrorResponseFilter(),
-		serviceerror.NewErrorLoggerFilter(),
-	}
-}
 
 func main() {
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 
-	lobby := lobby.NewLobby()
-	goroom := &service.GoRoom{
-		Lobby: lobby,
+	socket, err := net.Listen("tcp", ":10200")
+	if err != nil {
+		glog.Fatalf("failed to listen: %v", err)
 	}
 
-	endpoint := httpservice.NewEndpoint()
-	endpoint.POST("/rooms", saola.Apply(
-		&service.CreateRoom{
-			Service: goroom,
-		},
-		Filters()...))
-
-	endpoint.POST("/rooms/:roomID/join", saola.Apply(
-		&service.JoinRoom{
-			Service: goroom,
-		},
-		Filters()...))
-
-	endpoint.GET("/rooms/:roomID", saola.Apply(
-		&service.RoomInfo{
-			Service: goroom,
-		},
-		Filters()...))
-
-	log.Fatal(httpservice.Serve(":10200", saola.Apply(
-		endpoint,
-		httpservice.NewStdRequestLogFilter())))
+	grpcServer := grpc.NewServer()
+	goroom.RegisterRoomManagerServer(grpcServer, new(goroom.RoomManager))
+	grpcServer.Serve(socket)
 }
